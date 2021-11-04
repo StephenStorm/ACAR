@@ -161,7 +161,7 @@ def main(local_rank, args):
         logger.info('val temporal aug: {}'.format(temporal_transform))
 
         val_log_items = ['epoch']
-        if opt.val.with_label:
+        if opt.val.with_label: # False
             val_log_items.append('loss')
         if opt.val.get('eval_mAP', None) is not None:
             val_log_items.append('mAP')
@@ -339,6 +339,9 @@ def val_epoch(epoch, data_loader, model, criterion, act_func,
     end_time = time.time()
     for i, data in enumerate(data_loader):  
         data_time.update(time.time() - end_time)
+
+        # print(data)
+        # return
 
         with torch.no_grad():
             ret = model(data, evaluate=True)
