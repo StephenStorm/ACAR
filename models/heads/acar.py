@@ -93,10 +93,10 @@ class ACARHead(nn.Module):
         # temporal average pooling
         h, w = feats[0].shape[3:]
         # requires all features have the same spatial dimensions
-        feats = [nn.AdaptiveAvgPool3d((1, h, w))(f).view(-1, f.shape[1], h, w) for f in feats]
-        feats = torch.cat(feats, dim=1)
+        feats = [nn.AdaptiveAvgPool3d((1, h, w))(f).view(-1, f.shape[1], h, w) for f in feats] # torch.Size([1, 2048, 29, 16]) torch.Size([1, 256, 29, 16])
+        feats = torch.cat(feats, dim=1) # torch.Size([1, 2304, 29, 16])
 
-        feats = self.conv_reduce(feats)
+        feats = self.conv_reduce(feats) #1， 1024， 29， 16
 
         rois = data['rois']
         rois[:, 1] = rois[:, 1] * w

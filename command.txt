@@ -1,4 +1,6 @@
 python main.py --config configs/AVA/evalAVA_SLOWFAST_R101_ACAR_HR2O_DEPTH1.yaml --nproc_per_node 1 --backend nccl 
+python main.py --config configs/AVA/SLOWFAST_R101_ACAR_HR2O_DEPTH1.yaml --nproc_per_node 8 --backend nccl 
+/opt/tiger/minist/ACAR-Net/configs/AVA/SLOWFAST_R101_ACAR_HR2O_DEPTH1.yaml
 [-master_addr MASTER_ADDR] [--master_port 31114]
 
 
@@ -20,7 +22,7 @@ ava_val_v2.2_fair_0.85.pkl 中data的一行内容：
     ]
 }
 
-id2classes:
+id2classes = 
 [
     {'name': 'bend/bow (at the waist)', 'id': 1}, {'name': 'crouch/kneel', 'id': 3}, {'name': 'dance', 'id': 4}, {'name': 'fall down', 'id': 5}, 
     {'name': 'get up', 'id': 6}, {'name': 'jump/leap', 'id': 7}, {'name': 'lie/sleep', 'id': 8}, {'name': 'martial art', 'id': 9}, 

@@ -45,6 +45,7 @@ class AVA_model(nn.Module):
         i_n = {'aug_info': noaug_info, 'labels': data['labels'], 
                'filenames': data['filenames'], 'mid_times': data['mid_times']}
         o = self.neck(i_n)
+        # print(o)
         
         output_list = [None] * len(o['filenames'])
         cnt_list = [0] * len(o['filenames'])
@@ -52,6 +53,7 @@ class AVA_model(nn.Module):
         for no in range(len(data['clips'])):
             i_b = {'clips': data['clips'][no]}
             o_b = self.backbone(i_b)
+            # print(o_b['features'][0].shape, o_b['features'][1].shape)
             
             i_n = {'aug_info': data['aug_info'][no], 'labels': data['labels'], 
                    'filenames': data['filenames'], 'mid_times': data['mid_times']}
@@ -60,20 +62,25 @@ class AVA_model(nn.Module):
             if o_n['num_rois'] == 0:
                 continue
             ids = o_n['bbox_ids']
+            # print(ids)
                 
             i_h = {'features': o_b['features'], 'rois': o_n['rois'], 
                    'num_rois': o_n['num_rois'], 'roi_ids': o_n['roi_ids'],
                    'sizes_before_padding': o_n['sizes_before_padding']}
+            # print(o_n['num_rois'])
+            # print(o_n['rois']) # tensor([[0.0000, 0.4076, 0.2592, 0.5179, 0.3817]], device='cuda:0')
+            # print(o_n['sizes_before_padding']) # [[1.0, 1.0]]
             o_h = self.head(i_h)
             
             outputs = o_h['outputs']
+            # print(outputs)
             for idx in range(o_n['num_rois']):
                 if cnt_list[ids[idx]] == 0:
                     output_list[ids[idx]] = outputs[idx]
                 else:
                     output_list[ids[idx]] += outputs[idx]
                 cnt_list[ids[idx]] += 1
-            
+        # print(output_list)
         num_rois, filenames, mid_times, bboxes, targets, outputs = 0, [], [], [], [], []
         for idx in range(len(o['filenames'])):
             if cnt_list[idx] == 0:

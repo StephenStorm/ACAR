@@ -16,7 +16,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
 
 from calc_mAP import run_evaluation
-from datasets import ava, spatial_transforms, temporal_transforms
+ç
 from distributed_utils import init_distributed
 import losses
 from models import AVA_model
@@ -381,7 +381,7 @@ def val_epoch(epoch, data_loader, model, criterion, act_func,
                             batch_time=batch_time,
                             data_time=data_time))
 
-    if calc_loss:
+    if calc_loss: # False
         total_num = torch.Tensor([global_losses.count]).cuda()
         loss_sum = torch.Tensor([global_losses.avg * global_losses.count]).cuda()
         dist.all_reduce(total_num)

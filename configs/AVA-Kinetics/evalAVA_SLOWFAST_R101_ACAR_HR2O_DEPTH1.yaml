@@ -2,7 +2,7 @@ evaluate: True
 
 pretrain:
     path: model_zoo/AVA-Kinetics_SLOWFAST_R101_ACAR_HR2O_DEPTH1.pth.tar
-
+resume_path: model_zoo/AVA-Kinetics_SLOWFAST_R101_ACAR_HR2O_DEPTH1.pth.tar
 result_path: experiments/AVA-Kinetics/evalAVA_SLOWFAST_R101_ACAR_HR2O_DEPTH1
 manual_seed: 1
 print_freq: 20
@@ -57,8 +57,8 @@ val:
         temporal:
             type: TemporalCenterCrop
             kwargs:
-                size: 64
-                step: 2
+                size: 5
+                step: 1
 
     with_label: False
     eval_mAP:

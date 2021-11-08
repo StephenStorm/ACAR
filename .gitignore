@@ -1,7 +1,17 @@
+result.txt
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+data
+exps
+annotations
+experiments
+model_zoo
+pretrained
+*.jpg
 
 # C extensions
 *.so

@@ -64,12 +64,12 @@ class TemporalCenterCrop(object):
         end_index = min(begin_index + self.size, len(frame_indices))
 
         out = frame_indices[begin_index:end_index]
-
+        # 视频循环不补齐64帧。
         for index in out:
             if len(out) >= self.size:
                 break
             out.append(index)
-
+        # sample from 64 frames
         return out[::self.step]
 
     def __repr__(self):
