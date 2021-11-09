@@ -39,6 +39,7 @@ def visual_result(image_path, bboxes = None, outputs = None, save = True, prob_t
             if top3_prob[idx] > prob_thresh :
                 cv2.putText(img, '{} : {:.2f}'.format(top3_class[idx], top3_prob[idx]), (bbox[0],bbox[1] - 20 + idx * 12 ), cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,0,255),2)
         # print(sorted_prob)
+        print('-'*100 + '\n')
     if save:
         cv2.imwrite(save_path, img)
 

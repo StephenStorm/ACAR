@@ -1,14 +1,12 @@
-import multiprocessing as mp
-
 from torch.serialization import check_module_version_greater_or_equal
-mp.set_start_method('spawn', force=True)
+
 import os
 
 from easydict import EasyDict
 import yaml
 import torch
 from datasets import ava, spatial_transforms, temporal_transforms
-from distributed_utils import init_distributed
+
 import losses
 from models import AVA_model
 
@@ -24,24 +22,8 @@ from my_test.mmdet_test import get_person
 from my_test.test_utils import id2class, class2id, id_class_dict
 from my_test.visua_result import visual_result
 
-def local_spatial_transform(spatial_transform, clip):
-    if spatial_transform is not None:
-        assert isinstance(spatial_transform, list)
-                    
-        init_size = clip[0].size[:2]
-        clips, aug_info = [], []
-        for st in spatial_transform:
-            params = st.randomize_parameters()
-            aug_info.append(get_aug_info(init_size, params))
-        
-            clips.append(torch.stack([st(img) for img in clip], 0).permute(1, 0, 2, 3))
-    else:
-        aug_info = [None]
-        clips = [torch.stack(clip, 0).permute(1, 0, 2, 3)]
-    return clips, aug_info
 
 
-# def read_img(root, video_name, index, annotation_path = 'annotations/ava_val_v2.2_fair_0.85.pkl'):
 def read_img(root, video_name, temporal_transform, spatial_transform = None):
     image_dir = os.path.join(root, video_name)
     
@@ -64,6 +46,10 @@ def read_img(root, video_name, temporal_transform, spatial_transform = None):
         except BaseException as e:
             raise RuntimeError('Caught "{}" when loading {}'.format(str(e), image_path))   
         clip.append(img)
+    if len(clip) == 0:
+        print(video_name)
+        print('*'*100 + '\n')
+        return 
 
     if spatial_transform is not None:
         assert isinstance(spatial_transform, list)
@@ -82,37 +68,22 @@ def read_img(root, video_name, temporal_transform, spatial_transform = None):
     return clips, aug_info
 
 
-
-
-def main(config):
-    video_root = '/opt/tiger/minist/datasets/'
-    video_name = 'v0d00fg10000c3rq96bc77ufsrjbdn4g'
-
-    format_str = video_name + '_{}.jpg'
-    out_file = open('result.txt', 'w')
-
+def build(config):
     with open(config) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-
     opt = EasyDict(config)
-
-    # writer = SummaryWriter(os.path.join(opt.result_path, 'tb'))
-    
     # create model
     model = AVA_model(opt.model)
-    
+    model.cuda()
+    model.eval()
+    criterion, act_func = getattr(losses, opt.loss.type)(**opt.loss.get('kwargs', {}))
+    '''
     model_param_tmp = open('model_param.txt', 'w')
     for param, weight in model.state_dict().items():
         model_param_tmp.write('{} {}'.format(param, weight.shape))
     
     model_param_tmp.write('-'*100 + '\n')
-    # model_param_tmp.wri
-        
-    
-    model.cuda()
-    model.eval()
-    criterion, act_func = getattr(losses, opt.loss.type)(**opt.loss.get('kwargs', {}))
-    
+    ''' 
     if opt.get('resume_path', None) is not None:
         print('loading state_dict form checkpoint...')
         if not os.path.isfile(opt.resume_path):
@@ -132,12 +103,6 @@ def main(config):
             # model_param_tmp.write(str(checkpoint[param].shape) + '\n')
         model_param_tmp.close()
         '''
-        # begin_epoch = checkpoint['epoch'] + 1
-        # if isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
-        #     model.load_state_dict(checkpoint['state_dict'])
-        # else:
-        #     model.load_state_dict(checkpoint)
-        # model.load_state_dict(checkpoint)
         print('load checkpoint done !!!')
     
     val_aug = opt.val.augmentation
@@ -163,6 +128,18 @@ def main(config):
 
     temporal_transform = getattr(temporal_transforms, val_aug.temporal.type)(**val_aug.temporal.get('kwargs', {}))
 
+    return model, act_func, spatial_transform, temporal_transform
+
+def inference_once(video_root, video_name, model, temporal_transform, spatial_transform, act_func, write_file = False):
+    # video_root = '/opt/tiger/minist/datasets/douyin_video/'
+    # video_name = 'v0d00f5b0000bv1n5bv1tcavsgk07btg'
+
+    format_str = video_name + '_{}.jpg'
+    out_file = None
+    if write_file:
+        out_file = open('result.txt', 'w')
+
+
     clip, aug_info = read_img(video_root, video_name, temporal_transform, spatial_transform)
     print('aug info : {}'.format(aug_info))
     print('clip shape : {}'.format(clip[0].shape))
@@ -174,6 +151,7 @@ def main(config):
     bboxes = get_person(center_img, 0.5) # [ [] ] 双层列表， 每个元素是以一个长度为4的列表，分别是[x0, y0, x1, y1]
     if len(bboxes) == 0:
         return
+    print()
     print(bboxes)
 
     
@@ -209,7 +187,7 @@ def main(config):
         'labels': labels,
         'mid_times': mid_times
     }
-    print('batch [0] shape {}'.format(clips[0].shape))
+    # print('batch [0] shape {}'.format(clips[0].shape))
     # print('filenames : {}'.format(filenames))
     # print('mid_times: {}'.format(mid_times))
 
@@ -226,17 +204,27 @@ def main(config):
     # print(outputs)
     visual_result(center_img, bboxes, outputs)
 
-    for k in range(num_rois):
-        prefix = "%s,%s,%.3f,%.3f,%.3f,%.3f"%(fnames[k], mid_times[k],
-                                                bboxes[k][0], bboxes[k][1],
-                                                bboxes[k][2], bboxes[k][3])
-        for cls in range(outputs.shape[1]):
-            score_str = '%.3f'%outputs[k][cls]
-            out_file.write(prefix + ",%d,%s\n" % (id_class_dict[cls]['id'], score_str))
-    out_file.close()
+    if write_file:
+        for k in range(num_rois):
+            prefix = "%s,%s,%.3f,%.3f,%.3f,%.3f"%(fnames[k], mid_times[k],
+                                                    bboxes[k][0], bboxes[k][1],
+                                                    bboxes[k][2], bboxes[k][3])
+            for cls in range(outputs.shape[1]):
+                score_str = '%.3f'%outputs[k][cls]
+                out_file.write(prefix + ",%d,%s\n" % (id_class_dict[cls]['id'], score_str))
+        out_file.close()
 
-    return 
+    return
+
+
+def main():
+    config_path = '/opt/tiger/minist/ACAR-Net/configs/AVA-Kinetics/evalAVA_SLOWFAST_R101_ACAR_HR2O_DEPTH1.yaml'
+    model, act_func, spatial_transform, temporal_transform = build(config_path)
+    video_root = '/opt/tiger/minist/datasets/douyin_video'
+    video_names = os.listdir(video_root)
+    for video_name in video_names :
+        inference_once(video_root, video_name, model, temporal_transform, spatial_transform, act_func)
 
 if __name__ == '__main__':
-   config_path = '/opt/tiger/minist/ACAR-Net/configs/AVA-Kinetics/evalAVA_SLOWFAST_R101_ACAR_HR2O_DEPTH1.yaml'
-   main(config_path)
+   
+   main()
